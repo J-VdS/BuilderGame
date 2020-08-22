@@ -26,7 +26,7 @@ public class PlayfieldGenerator extends Generator {
         for(int x = 0; x < width; x++){
             for(int y = 0; y < height; y++){
                 tiles[x][y] = new Tile(x, y);
-                tiles[x][y].setFloor(pallete.floor);
+                tiles[x][y].setFloor((x%5==0)?pallete.secondFloor:pallete.floor);
             }
         }
 
@@ -42,8 +42,6 @@ public class PlayfieldGenerator extends Generator {
                     //between players
                     for (int i = 1; i < maxPlayers; i++) {
                         if(border + i*schemWidth+(i-1)*betweenPlayer <= x && x < border + i*(schemWidth+betweenPlayer)){
-                            System.out.println(x);
-                            System.out.println(y);
                             tiles[x][y].setBlock(pallete.wall);
                         }
                     }
@@ -52,5 +50,16 @@ public class PlayfieldGenerator extends Generator {
         }
 
         world.setMap(new Map(StringMap.of("name", mapnamepre + pallete.name())));
+    }
+
+    public int[][] getSpawns(){
+        int[][] ret = new int[maxPlayers][2];
+        int sw = Math.round(schemWidth/2);
+        int sh = Math.round(schemHeight/2) + border;
+        for(int i=0; i<maxPlayers; i++){
+            ret[i][0] = border + sw + i*(schemWidth+betweenPlayer);
+            ret[i][1] = sh;
+        }
+        return ret;
     }
 }

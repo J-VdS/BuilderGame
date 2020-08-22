@@ -1,10 +1,9 @@
 package bg;
 
 import arc.*;
-import arc.struct.IntArray;
 import arc.util.*;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import mindustry.*;
+import mindustry.core.GameState;
 import mindustry.entities.type.*;
 import mindustry.game.EventType.*;
 
@@ -20,16 +19,13 @@ import static bg.BuilderGame.*;
 
 
 public class BuilderGamePlugin extends Plugin{
-    //duration of one round
-    Long starttime;
     //join variables
-    Boolean modeActive = false;
     Boolean started = false;
     Boolean waiting = true;
     static Team dead = Team.crux;
 
     //schematic dict/check
-    public SchematicOption schematics = new SchematicOption();
+    public SchematicOption schems = new SchematicOption();
     public final Rules rules = new Rules();
 
     private PlayfieldGenerator generator;
@@ -43,7 +39,7 @@ public class BuilderGamePlugin extends Plugin{
         rules.infiniteResources = true;
 
         Events.on(PlayerJoin.class, event -> {
-            if(!modeActive)return;
+            if(!active())return;
             event.player.kill();
             event.player.setTeam(Team.sharded);
             event.player.dead = false;
@@ -53,12 +49,12 @@ public class BuilderGamePlugin extends Plugin{
 
         //main event loop
         Events.on(Trigger.update, () -> {
-            if(!modeActive)return;
+            if(!active())return;
         });
 
         //check if they are finished.
         Events.on(BlockBuildEndEvent.class, event -> {
-            if(!modeActive)return;
+            if(!active())return;
             if(event.player.buildQueue().size > schemThreshold && !event.breaking){
                 Call.sendMessage(event.player + "[scarlet] was cheating.");
                 Call.onPlayerDeath(event.player);
@@ -91,12 +87,10 @@ public class BuilderGamePlugin extends Plugin{
             state.rules = rules.copy();
             logic.play();
             netServer.openServer();
-
-            modeActive = true;
         });
 
         handler.register("bg-list", "All the schematics used in the game.", args -> {
-
+            //Log.infoList(SchematicOption.list());
         });
 
         handler.register("bg-map", "Show all schematics on a map.", args -> {
@@ -104,7 +98,16 @@ public class BuilderGamePlugin extends Plugin{
         });
 
         handler.register("bg", "<add/remove>", "<schematic-B64>", args -> {
-
+            switch (args[0]) {
+                case "add":
+                    schems.addSchematic(args[1]);
+                    break;
+                case "remove":
+                    schems.removeSchematic(args[1]);
+                    break;
+                default:
+                    Log.err("Invalid command", "bg <add/remove> <schematic-B64>");
+            }
         });
     }
 
@@ -127,5 +130,10 @@ public class BuilderGamePlugin extends Plugin{
             player.sendMessage(tester.writeBase64(s));
             System.out.println(tester.writeBase64(s));
         });
+    }
+
+
+    public boolean active(){
+        return state.rules.tags.getBool("buildergame") && !state.is(GameState.State.menu);
     }
 }
