@@ -10,16 +10,18 @@ import mindustry.game.Schematics;
 import static bg.BuilderGame.*;
 
 public class SchematicOption{
+
     //all the schems
     ObjectMap<String, Schematic> allSchems = new ObjectMap<>();
     //customschems - new entries via server
     ObjectMap<String, Schematic> customSchems = new ObjectMap<>();
     //baseschems - hardcoded
     ObjectMap<String, Schematic> baseSchems = new ObjectMap<>();
-
+    /*
     public SchematicOption(){
         int baseErrors = 0;
         for(String s: baseSchemsRaw){
+            System.out.println(s);
             try {
                 Schematic _schem = Schematics.readBase64(s);
                 if(_schem == null) {
@@ -37,7 +39,6 @@ public class SchematicOption{
             Log.err("BuilderGame<baseErrors>", baseErrors);
         }
     }
-
     public void addSchematic(String inputSchem){
         try{
             Schematic _schem = Schematics.readBase64(inputSchem);
@@ -64,5 +65,5 @@ public class SchematicOption{
         }
     }
 
-
+*/
 }

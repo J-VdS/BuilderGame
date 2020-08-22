@@ -96,7 +96,7 @@ public class BuilderGamePlugin extends Plugin{
         handler.register("bg-map", "Show all schematics on a map.", args -> {
 
         });
-
+        /*
         handler.register("bg", "<add/remove>", "<schematic-B64>", args -> {
             switch (args[0]) {
                 case "add":
@@ -109,6 +109,7 @@ public class BuilderGamePlugin extends Plugin{
                     Log.err("Invalid command", "bg <add/remove> <schematic-B64>");
             }
         });
+         */
     }
 
     //register commands that player can invoke in-game
