@@ -69,6 +69,7 @@ public class BuilderGamePlugin extends Plugin{
             }
 
             if(waiting && playerGroup.all().size < 2){
+                System.out.println("More players");
                 event.player.sendMessage("Waiting for players. Use [accent]/rules[] to get more info about the game.");
             }
         });

@@ -5,7 +5,7 @@ import mindustry.game.Team;
 
 public class BuilderGame {
     //DEBUG
-    static boolean DEBUG = true;
+    static boolean DEBUG = false;
 
     //Teams
     static Team spectator = Team.purple;
@@ -43,6 +43,6 @@ public class BuilderGame {
         };
 
     //rules
-    public final static String rulesMsg = "[][white]*** RULES ***[]\n* Copy the schematic in your zone.\nThe player who is fastest gets the most points.\n* If you fail to copy withing the timeframe you will get no points.\n*[scarlet] Copy/schematics === CHEATING\n[]\n Use /rules to view this message.";
+    public final static String rulesMsg = "[][white]*** RULES ***[]\n* Copy the schematic in your zone.\n\nThe player who is fastest gets the most points.\n\n* If you fail to copy withing the timeframe you will get no points.\n\n*[scarlet] Copy/schematics === CHEATING\n\n\n[]Use /rules to view this message.";
     };
 
