@@ -4,10 +4,10 @@ import arc.struct.Array;
 import arc.struct.ObjectMap;
 import arc.util.Log;
 
+import arc.util.Structs;
 import mindustry.game.Schematic;
 import mindustry.game.Schematics;
-
-import javax.sound.midi.SysexMessage;
+;
 
 import static bg.BuilderGame.*;
 
@@ -85,5 +85,13 @@ public class SchematicOption{
             sb.append(_s).append('\n');
         }
         return sb.toString();
+    }
+
+    public void random(){
+        currentSchem = Structs.random(baseSchems.keys().toArray().toArray());
+    }
+
+    public Schematic getCurrentSchem(){
+        return baseSchems.get(currentSchem);
     }
 }

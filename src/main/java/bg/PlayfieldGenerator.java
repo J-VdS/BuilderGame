@@ -1,6 +1,7 @@
 package bg;
 
 import arc.struct.StringMap;
+import mindustry.content.Blocks;
 import mindustry.game.Schematic;
 import mindustry.game.Team;
 import mindustry.maps.Map;
@@ -94,9 +95,21 @@ public class PlayfieldGenerator extends Generator {
         for(Schematic.Stile st: genSchem.tiles){
             for(int i=0; i<maxPlayers; i++){
                 x1 = border + i*(schemWidth+betweenPlayer);
-                Call.onConstructFinish(world.tile(x1+st.x, y1+st.y), st.block, 0, (byte)0, Team.green, true);
+                Call.onConstructFinish(world.tile(x1+st.x, y1+st.y), st.block, 0, st.rotation, Team.green, true);
                 if(st.config!=0){
                     //TODO
+                }
+            }
+        }
+    }
+
+    public void resetField(){
+        Tile t;
+        for(int x=border; x<=width-border; x++){
+            for(int y=border; y<=height-border; y++){
+                t = world.tile(x, y);
+                if(!t.block().isStatic() && t.block() != Blocks.air){
+                    Call.onDeconstructFinish(t, t.block(),0);
                 }
             }
         }

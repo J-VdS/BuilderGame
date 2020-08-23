@@ -1,6 +1,5 @@
 package bg;
 
-import mindustry.Vars;
 import mindustry.gen.Call;
 
 public class BuildTimer{
@@ -39,6 +38,14 @@ public class BuildTimer{
         return 0;
     }
 
+    public int startTimer(Long time){
+        if(ticking()) return 1;
+        this.duration = time;
+        this.stopTime = System.currentTimeMillis() + duration;
+        loop();
+        return 0;
+    }
+
     private void loop(){
         active = true;
         this.updateThread = new Thread(){
@@ -48,8 +55,6 @@ public class BuildTimer{
                 while(true && active){
                     t = (stopTime - System.currentTimeMillis());
                     if(t%interval == 0){
-                        System.out.println("update");
-                        System.out.println(t/1000L);
                         Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", t/60000L, t/1000L), 1.1f);
                     }
                     if(t<=0L){
@@ -62,5 +67,4 @@ public class BuildTimer{
         this.updateThread.setDaemon(true);
         this.updateThread.start();
     }
-
 }

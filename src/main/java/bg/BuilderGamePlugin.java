@@ -1,7 +1,9 @@
 package bg;
 
 import arc.*;
+import arc.struct.Array;
 import arc.util.*;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import mindustry.*;
 import mindustry.core.GameState;
 import mindustry.entities.type.*;
@@ -21,14 +23,28 @@ import static bg.BuilderGame.*;
 public class BuilderGamePlugin extends Plugin{
     //join variables
     Boolean started = false;
+    Boolean resetting = false;
+    Boolean betweenRounds = false;
+    //if players>2 start countdown 5 seconds
     Boolean waiting = true;
-    static Team dead = Team.crux;
+    Boolean countdown = false;
+    //ints
+    int round = 0;
+    Long nextRound = 0L;
+
 
     public final Rules rules = new Rules();
 
     private PlayfieldGenerator generator;
     //schematic dict/check
     public SchematicOption schems;
+    //timer
+    private BuildTimer btimer;
+    //scores
+    private Scores scores;
+    //playing players
+    Array<Player> playingPlayers = new Array<>();
+    int doneBuilding = 0;
 
     @Override
     public void init(){
@@ -41,18 +57,26 @@ public class BuilderGamePlugin extends Plugin{
         Events.on(PlayerJoin.class, event -> {
             if(!active())return;
             event.player.kill();
-            event.player.setTeam(Team.all()[6]);//Team.sharded);
-            event.player.dead = false;
+            event.player.setTeam(spectator);
+            if(DEBUG){
+                event.player.setTeam(Team.all()[6]);//Team.sharded);
+                event.player.dead = false;
 
-            int[] spawn = generator.getSpawns()[0];
-            Call.onPositionSet(event.player.con, spawn[0]*8, spawn[1]*8);
-            event.player.setNet(spawn[0]*8, spawn[1]*8);
-            event.player.set(spawn[0]*8, spawn[1]*8);
+                int[] spawn = generator.getSpawns()[0];
+                Call.onPositionSet(event.player.con, spawn[0]*8, spawn[1]*8);
+                event.player.setNet(spawn[0]*8, spawn[1]*8);
+                event.player.set(spawn[0]*8, spawn[1]*8);
+            }
+
+            if(waiting && playerGroup.all().size < 2){
+                event.player.sendMessage("Waiting for players. Use [accent]/rules[] to get more info about the game.");
+            }
         });
 
-        //main event loop
-        Events.on(Trigger.update, () -> {
-            if(!active())return;
+        Events.on(PlayerLeave.class, event -> {
+            if(playingPlayers.contains(event.player)){
+                playingPlayers.remove(event.player);
+            }
         });
 
         //check if they are finished.
@@ -62,24 +86,75 @@ public class BuilderGamePlugin extends Plugin{
             if(event.player.buildQueue().size > schemThreshold && !event.breaking && !DEBUG) {
                 Call.sendMessage(event.player.name + " [scarlet] was cheating.");
                 Call.onPlayerDeath(event.player);
+                event.player.setTeam(finished);
+                scores.updateScore(event.player, cheatPoints);
             }
-            if(schems.checkSchematic(generator.getPlayerZone(player.getTeam().id))){
-                Call.sendMessage("[sky]We have a winner![] " +  event.player.name);
+
+            if(schems.checkSchematic(generator.getPlayerZone(event.player.getTeam().id))){
+                Call.onPlayerDeath(event.player);
+                event.player.setTeam(finished);
+                int points = BuilderGame.Points[doneBuilding];
+                Call.sendMessage(String.format("%s [] finished and gained %d points.", event.player.name, points));
+            }
+        });
+
+        //main event loop
+        Events.on(Trigger.update, () -> {
+            if(!active())return;
+            if(started) {
+                if((btimer.ticking() && allFinished() || !btimer.ticking()) && !betweenRounds){
+                    if(round > maxGameRounds) {
+                        scores.showLeaderboardEnd();
+                        started = false;
+                        resetting = true;
+                    }else{
+                        round++;
+                        btimer.stopTimer();
+                        doneBuilding = 0;
+                        playingPlayers.forEach(p -> p.kill());
+                        generator.resetField();
+                        //start next round
+                        betweenRounds = true;
+                        nextRound = System.currentTimeMillis() + ((round==1)?0:timeBetween);
+                    }
+                }else if(betweenRounds){
+                    if(System.currentTimeMillis()>nextRound){
+                        for(int j = 0; j<playingPlayers.size; j++){
+                            spawnPlayer(playingPlayers.get(j), j);
+                        }
+                        schems.random();
+                        generator.spawnSchematic(schems.getCurrentSchem());
+                        btimer.startTimer(roundTime);
+                        betweenRounds = false;
+                        Call.sendMessage(Strings.format("Round %d / %d", round, maxGameRounds));
+                    }
+                }
+            }else if(resetting){
+                resetting = false;
+            }else if(waiting && Vars.playerGroup.size() > 1){
+                Call.onInfoMessage("[accent]The game will start soon ...[]\n"+rulesMsg);
+                countdown = true;
+                waiting = true;
+                btimer.startTimer(joinTimer);
+            }else if(countdown && !btimer.ticking()){
+                round = 0;
+                Array<Player> _players = Vars.playerGroup.all().copy();
+                _players.shuffle();
+                for(int i=0; i<maxPlayers; i++){
+                    if(i >= Vars.playerGroup.size()) break;
+                    playingPlayers.add(_players.get(i));
+                }
+                scores.setPlayers(playingPlayers.copy());
+                //start game
+                started = true;
             }
         });
     }
 
     //register event handlers and create variables in the constructor
     public BuilderGamePlugin(){
-        //testing
-        /*
-        Events.on(BlockBuildEndEvent.class, event -> {
-            if(event.player.buildQueue().size > schemThreshold){
-                Call.sendMessage(event.player + "[scarlet] was cheating.");
-                Call.onPlayerDeath(event.player);
-            }
-        });
-        */
+        btimer = new BuildTimer(Thread.currentThread());
+        scores = new Scores();
     }
 
     //register commands that run on the server
@@ -125,8 +200,16 @@ public class BuilderGamePlugin extends Plugin{
     //register commands that player can invoke in-game
     @Override
     public void registerClientCommands(CommandHandler handler){
-        //change teams
-        handler.<Player>register("queue", "ask fishbuilder", (args, player) -> {
+        handler.<Player>register("rules", "shows the rules", (args, player) -> {
+            Call.onInfoMessage(player.con, rulesMsg);
+        });
+
+        handler.<Player>register("lb", "Shows the leaderboard", (args, player) -> {
+            Call.onInfoMessage(player.con, scores.LeaderboardInfo());
+        });
+
+        //DEBUG
+        handler.<Player>register("queues", "ask fishbuilder", (args, player) -> {
             for(Player p: Vars.playerGroup.all()) {
                 player.sendMessage(p.name + " []: " + Integer.toString(p.buildQueue().size));
             }
@@ -144,12 +227,14 @@ public class BuilderGamePlugin extends Plugin{
 
         handler.<Player>register("spawn", "[a]", "", (args, player)->{
             if(args.length == 0) {
-                generator.spawnSchematic(schems.baseSchems.values().toArray().get(0));
-                schems.currentSchem = schems.baseSchems.keys().toArray().get(0);
-            }else{
-                generator.spawnSchematic(schems.baseSchems.values().toArray().get(1));
-                schems.currentSchem = schems.baseSchems.keys().toArray().get(1);
+                int index = Math.round((float)Math.random());
+                generator.spawnSchematic(schems.baseSchems.values().toArray().get(index));
+                schems.currentSchem = schems.baseSchems.keys().toArray().get(index);
             }
+        });
+
+        handler.<Player>register("reset", "", (args, player)->{
+            generator.resetField();
         });
 
         handler.<Player>register("tester", "test", (args, player)->{
@@ -165,9 +250,30 @@ public class BuilderGamePlugin extends Plugin{
            BuildTimer bt = new BuildTimer(Thread.currentThread());
            bt.setTime(roundTime);
            bt.startTimer();
-
         });
     }
+
+    public void spawnPlayer(Player player, int id){
+        player.setTeam(Team.all()[6+id]);
+        player.dead = false;
+        int[] spawn = generator.getSpawns()[id];
+        //location
+        Call.onPositionSet(player.con, spawn[0]*8, spawn[1]*8);
+        player.setNet(spawn[0]*8, spawn[1]*8);
+        player.set(spawn[0]*8, spawn[1]*8);
+    }
+
+    public boolean allFinished(){
+        /*
+        int counter = 0;
+        for(Player p: playerGroup){
+            if(p.getTeam() == finished) counter++;
+        }
+        return  counter == playingPlayers.size;
+         */
+        return doneBuilding == playingPlayers.size;
+    }
+
 
     public boolean active(){
         return state.rules.tags.getBool("buildergame") && !state.is(GameState.State.menu);
