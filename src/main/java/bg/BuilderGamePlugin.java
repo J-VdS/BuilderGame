@@ -24,12 +24,11 @@ public class BuilderGamePlugin extends Plugin{
     Boolean waiting = true;
     static Team dead = Team.crux;
 
-    //schematic dict/check
-    public SchematicOption schems = new SchematicOption();
     public final Rules rules = new Rules();
 
     private PlayfieldGenerator generator;
-
+    //schematic dict/check
+    public SchematicOption schems;
 
     @Override
     public void init(){
@@ -37,14 +36,18 @@ public class BuilderGamePlugin extends Plugin{
         rules.tags.put("buildergame", "true");
         //sandboxmode
         rules.infiniteResources = true;
+        rules.playerDamageMultiplier = 0f;
 
         Events.on(PlayerJoin.class, event -> {
             if(!active())return;
             event.player.kill();
-            event.player.setTeam(Team.sharded);
+            event.player.setTeam(Team.all()[6]);//Team.sharded);
             event.player.dead = false;
 
-            Call.onPositionSet(event.player.con, 10*8, 10*8);
+            int[] spawn = generator.getSpawns()[0];
+            Call.onPositionSet(event.player.con, spawn[0]*8, spawn[1]*8);
+            event.player.setNet(spawn[0]*8, spawn[1]*8);
+            event.player.set(spawn[0]*8, spawn[1]*8);
         });
 
         //main event loop
@@ -55,9 +58,13 @@ public class BuilderGamePlugin extends Plugin{
         //check if they are finished.
         Events.on(BlockBuildEndEvent.class, event -> {
             if(!active())return;
-            if(event.player.buildQueue().size > schemThreshold && !event.breaking){
-                Call.sendMessage(event.player + "[scarlet] was cheating.");
+            //TODO remove DEBUG
+            if(event.player.buildQueue().size > schemThreshold && !event.breaking && !DEBUG) {
+                Call.sendMessage(event.player.name + " [scarlet] was cheating.");
                 Call.onPlayerDeath(event.player);
+            }
+            if(schems.checkSchematic(generator.getPlayerZone(player.getTeam().id))){
+                Call.sendMessage("[sky]We have a winner![] " +  event.player.name);
             }
         });
     }
@@ -80,6 +87,8 @@ public class BuilderGamePlugin extends Plugin{
     public void registerServerCommands(CommandHandler handler){
         handler.register("buildergame", "Start the builderGame", args -> {
             //Start
+            schems = new SchematicOption();
+
             logic.reset();
             Log.info("generating map");
             world.loadGenerator(generator = new PlayfieldGenerator());
@@ -90,12 +99,13 @@ public class BuilderGamePlugin extends Plugin{
         });
 
         handler.register("bg-list", "All the schematics used in the game.", args -> {
-            //Log.infoList(SchematicOption.list());
+            Log.infoList(schems.printList());
         });
 
+        /*
         handler.register("bg-map", "Show all schematics on a map.", args -> {
-
         });
+        */
         /*
         handler.register("bg", "<add/remove>", "<schematic-B64>", args -> {
             switch (args[0]) {
@@ -116,7 +126,7 @@ public class BuilderGamePlugin extends Plugin{
     @Override
     public void registerClientCommands(CommandHandler handler){
         //change teams
-        handler.<Player>register("test", "ask fishbuilder", (args, player) -> {
+        handler.<Player>register("queue", "ask fishbuilder", (args, player) -> {
             for(Player p: Vars.playerGroup.all()) {
                 player.sendMessage(p.name + " []: " + Integer.toString(p.buildQueue().size));
             }
@@ -131,8 +141,33 @@ public class BuilderGamePlugin extends Plugin{
             player.sendMessage(tester.writeBase64(s));
             System.out.println(tester.writeBase64(s));
         });
-    }
 
+        handler.<Player>register("spawn", "[a]", "", (args, player)->{
+            if(args.length == 0) {
+                generator.spawnSchematic(schems.baseSchems.values().toArray().get(0));
+                schems.currentSchem = schems.baseSchems.keys().toArray().get(0);
+            }else{
+                generator.spawnSchematic(schems.baseSchems.values().toArray().get(1));
+                schems.currentSchem = schems.baseSchems.keys().toArray().get(1);
+            }
+        });
+
+        handler.<Player>register("tester", "test", (args, player)->{
+            Boolean ret = schems.checkSchematic(generator.getPlayerZone(player.getTeam().id));
+            if(ret){
+                player.sendMessage("yeah");
+            }else{
+                player.sendMessage("meh");
+            }
+        });
+
+        handler.<Player>register("timer", "", (args, player)->{
+           BuildTimer bt = new BuildTimer(Thread.currentThread());
+           bt.setTime(roundTime);
+           bt.startTimer();
+
+        });
+    }
 
     public boolean active(){
         return state.rules.tags.getBool("buildergame") && !state.is(GameState.State.menu);

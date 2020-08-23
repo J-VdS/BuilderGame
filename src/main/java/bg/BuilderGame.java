@@ -3,6 +3,10 @@ package bg;
 import arc.util.Structs;
 
 public class BuilderGame {
+    //DEBUG
+    static boolean DEBUG = true;
+
+
     //roundtime (in millis)
     static long roundTime = 30000L;
 
@@ -18,7 +22,7 @@ public class BuilderGame {
 
     //base Schematics
     public static String[] baseSchemsRaw = {
-            "bXNjaAB4nE2JXQqAIBAGP03N17qHh5KyH9AUM7p+ahKx7DI7A4megB3aGYhkzrTMFMPkQzBR3dpaZXVcDca0+bhf7u8AmRddOZSA5ilvId5CbdWxlzPxrwqQ5kSrD9KGEnw="
-        };
+            "bXNjaAB4nGOQZOBiYGTgTs4vKEgt0i1PzMlhYGBgYkACEgycYBoAjNEEuQ=="
+            };
     };
 

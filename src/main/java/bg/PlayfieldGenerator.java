@@ -1,9 +1,12 @@
 package bg;
 
 import arc.struct.StringMap;
+import mindustry.game.Schematic;
+import mindustry.game.Team;
 import mindustry.maps.Map;
 import mindustry.maps.generators.Generator;
 import mindustry.world.Tile;
+import mindustry.gen.*;
 
 import static mindustry.Vars.world;
 import static bg.BuilderGame.*;
@@ -13,8 +16,7 @@ public class PlayfieldGenerator extends Generator {
     static int border = 5;
     static int schemWidth = 25;
     static int schemHeight = 10;
-    static int distPlayer = 5;
-    static int betweenPlayer = 10;
+    static int betweenPlayer = 5;
 
     public PlayfieldGenerator(){
         super(5*schemWidth+4*betweenPlayer+2*border, 2*schemHeight+betweenPlayer+2*border);
@@ -44,14 +46,13 @@ public class PlayfieldGenerator extends Generator {
                 else {
 
                     for (int i = 1; i < maxPlayers; i++) {
-                        if(border + i*schemWidth+(i-1)*betweenPlayer <= x && x < border + i*(schemWidth+betweenPlayer)){
+                        if (border + i * schemWidth + (i - 1) * betweenPlayer <= x && x < border + i * (schemWidth + betweenPlayer)) {
                             tiles[x][y].setBlock(pallete.wall);
                         }
                     }
                 }
             }
         }
-
         world.setMap(new Map(StringMap.of("name", mapnamepre + pallete.name())));
     }
 
@@ -64,5 +65,40 @@ public class PlayfieldGenerator extends Generator {
             ret[i][1] = sh;
         }
         return ret;
+    }
+
+    public int[][] getPlayerZones(){
+        int[][] ret = new int[maxPlayers][2];
+        for(int i=0; i<maxPlayers; i++){
+            ret[i][0] = border + i*(schemWidth+betweenPlayer);
+            ret[i][1] = border;
+        }
+        return ret;
+    }
+
+    //O intensive!
+    public int[] getPlayerZone(int id){
+        int[] ret = new int[]{border + (id-6)*(schemWidth+betweenPlayer),
+                              border,
+                              border + (id-5)*(schemWidth+betweenPlayer) - betweenPlayer - 1,
+                              border + schemHeight - 1};
+        for(int i: ret){
+            System.out.println(i);
+        }
+        return ret;
+    };
+
+    public void spawnSchematic(Schematic genSchem){
+        int y1 = border+betweenPlayer+schemHeight;
+        int x1;
+        for(Schematic.Stile st: genSchem.tiles){
+            for(int i=0; i<maxPlayers; i++){
+                x1 = border + i*(schemWidth+betweenPlayer);
+                Call.onConstructFinish(world.tile(x1+st.x, y1+st.y), st.block, 0, (byte)0, Team.green, true);
+                if(st.config!=0){
+                    //TODO
+                }
+            }
+        }
     }
 }
