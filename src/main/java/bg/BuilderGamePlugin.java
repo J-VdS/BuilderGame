@@ -2,8 +2,8 @@ package bg;
 
 import arc.*;
 import arc.struct.Array;
+import arc.struct.ObjectMap;
 import arc.util.*;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import mindustry.*;
 import mindustry.core.GameState;
 import mindustry.entities.type.*;
@@ -24,15 +24,16 @@ public class BuilderGamePlugin extends Plugin{
     //join variables
     Boolean started = false;
     Boolean resetting = false;
-    Boolean betweenRounds = false;
+    Boolean betweenRounds = true;
     //if players>2 start countdown 5 seconds
     Boolean waiting = true;
     Boolean countdown = false;
+    Long startGameTime = 0L;
+    Long timeNewGame = 0L;
     //ints
     int round = 0;
     Long nextRound = 0L;
-
-
+    
     public final Rules rules = new Rules();
 
     private PlayfieldGenerator generator;
@@ -44,6 +45,7 @@ public class BuilderGamePlugin extends Plugin{
     private Scores scores;
     //playing players
     Array<Player> playingPlayers = new Array<>();
+    ObjectMap<Player, Long> shootingPlayers = new ObjectMap<>();
     int doneBuilding = 0;
 
     @Override
@@ -53,9 +55,14 @@ public class BuilderGamePlugin extends Plugin{
         //sandboxmode
         rules.infiniteResources = true;
         rules.playerDamageMultiplier = 0f;
+        rules.unitDamageMultiplier = 0f;
+        rules.playerHealthMultiplier = 1000f;
 
         Events.on(PlayerJoin.class, event -> {
             if(!active())return;
+            if(event.player.isMobile){
+                Call.onInfoMessage(event.player.con, "[scarlet]TURN OFF AUTO-AIM![]\n\nShooting == dead!");
+            }
             event.player.kill();
             event.player.setTeam(spectator);
             if(DEBUG){
@@ -68,10 +75,15 @@ public class BuilderGamePlugin extends Plugin{
                 event.player.set(spawn[0]*8, spawn[1]*8);
             }
 
-            if(waiting && playerGroup.all().size < 2){
-                System.out.println("More players");
+            /*
+            if(waiting && playerGroup.all().size < minPlayers){
                 event.player.sendMessage("Waiting for players. Use [accent]/rules[] to get more info about the game.");
+            }else if(countdown){
+                Call.onInfoMessage(event.player.con, "Countdown started, game will start [accent]very[] soon...\n" + rulesMsg);
+            }else if(started){
+                Call.onInfoMessage(event.player.con, "[accent]*** SPECTATING ***[]\n\nThe game already started. You can check the current leaderboard with [accent]/lb[] and rules with [accent]/rules[]");
             }
+            */
         });
 
         Events.on(PlayerLeave.class, event -> {
@@ -94,20 +106,25 @@ public class BuilderGamePlugin extends Plugin{
             if(schems.checkSchematic(generator.getPlayerZone(event.player.getTeam().id))){
                 Call.onPlayerDeath(event.player);
                 event.player.setTeam(finished);
-                int points = BuilderGame.Points[doneBuilding];
+                int points = BuilderGame.Points[doneBuilding++];
                 Call.sendMessage(String.format("%s [] finished and gained %d points.", event.player.name, points));
+                System.out.println("points++");
             }
         });
 
         //main event loop
         Events.on(Trigger.update, () -> {
             if(!active())return;
+
+            /*
             if(started) {
-                if((btimer.ticking() && allFinished() || !btimer.ticking()) && !betweenRounds){
+                if(((btimer.ticking() && allFinished()) || (!btimer.ticking()) && !betweenRounds)){
                     if(round > maxGameRounds) {
                         scores.showLeaderboardEnd();
                         started = false;
                         resetting = true;
+                        timeNewGame = System.currentTimeMillis() + betweenGames;
+                        playingPlayers.clear();
                     }else{
                         round++;
                         btimer.stopTimer();
@@ -127,17 +144,22 @@ public class BuilderGamePlugin extends Plugin{
                         generator.spawnSchematic(schems.getCurrentSchem());
                         btimer.startTimer(roundTime);
                         betweenRounds = false;
-                        Call.sendMessage(Strings.format("Round %d / %d", round, maxGameRounds));
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("Round ").append(round).append(" / ").append(maxGameRounds);
+                        Call.sendMessage(sb.toString());
                     }
                 }
-            }else if(resetting){
+            }else if(resetting && nextRound > System.currentTimeMillis()){
+                Call.sendMessage("[sky]Looking for players ...");
                 resetting = false;
-            }else if(waiting && Vars.playerGroup.size() > 1){
-                Call.onInfoMessage("[accent]The game will start soon ...[]\n"+rulesMsg);
-                countdown = true;
                 waiting = true;
+            }else if(waiting && Vars.playerGroup.size() >= minPlayers){
+                Call.onInfoMessage("[accent]\nThe game will start in 5 seconds...[]\n"+rulesMsg);
+                countdown = true;
+                waiting = false;
+                //startGameTime = System.currentTimeMillis() + joinTimer;
                 btimer.startTimer(joinTimer);
-            }else if(countdown && !btimer.ticking()){
+            }else if(countdown && !btimer.ticking()){//System.currentTimeMillis() > startGameTime){
                 round = 0;
                 Array<Player> _players = Vars.playerGroup.all().copy();
                 _players.shuffle();
@@ -145,10 +167,30 @@ public class BuilderGamePlugin extends Plugin{
                     if(i >= Vars.playerGroup.size()) break;
                     playingPlayers.add(_players.get(i));
                 }
+                scores.reset();
                 scores.setPlayers(playingPlayers.copy());
                 //start game
                 started = true;
+                betweenRounds = true;
+                countdown = false;
             }
+
+            for(Player p:playingPlayers.copy()){
+                if(p.isShooting){
+                    shootingPlayers.put(p, System.currentTimeMillis() + shootingDelay);
+                    scores.updateScore(p, shootingPenalty);
+                }else if(p.dead && !shootingPlayers.containsKey(p) && !betweenRounds && p.getTeam()!=finished && started){
+                    System.out.println("Revive");
+                    spawnPlayer(p, p.id);
+                }else if(shootingPlayers.containsKey(p)){
+                    if(System.currentTimeMillis() > shootingPlayers.get(p)){
+                        shootingPlayers.remove(p);
+                        spawnPlayer(p, p.id);
+                    }
+                }
+            }
+
+             */
         });
     }
 
@@ -210,58 +252,62 @@ public class BuilderGamePlugin extends Plugin{
         });
 
         //DEBUG
-        handler.<Player>register("queues", "ask fishbuilder", (args, player) -> {
-            for(Player p: Vars.playerGroup.all()) {
-                player.sendMessage(p.name + " []: " + Integer.toString(p.buildQueue().size));
-            }
-        });
+        if(DEBUG) {
+            handler.<Player>register("queues", "ask fishbuilder", (args, player) -> {
+                for (Player p : Vars.playerGroup.all()) {
+                    player.sendMessage(p.name + " []: " + Integer.toString(p.buildQueue().size));
+                }
+            });
 
-        handler.<Player>register("check", "<x> <y>", "test schematic", (args, player)->{
-            int x = Integer.parseInt(args[0]);
-            int y = Integer.parseInt(args[1]);
-            player.sendMessage(args[0] + " : " + args[1]);
-            Schematics tester = new Schematics();
-            Schematic s = tester.create(x,y, x+5,y+5);
-            player.sendMessage(tester.writeBase64(s));
-            System.out.println(tester.writeBase64(s));
-        });
+            handler.<Player>register("check", "<x> <y>", "test schematic", (args, player) -> {
+                int x = Integer.parseInt(args[0]);
+                int y = Integer.parseInt(args[1]);
+                player.sendMessage(args[0] + " : " + args[1]);
+                Schematics tester = new Schematics();
+                Schematic s = tester.create(x, y, x + 5, y + 5);
+                player.sendMessage(tester.writeBase64(s));
+                System.out.println(tester.writeBase64(s));
+            });
 
-        handler.<Player>register("spawn", "[a]", "", (args, player)->{
-            if(args.length == 0) {
-                int index = Math.round((float)Math.random());
-                generator.spawnSchematic(schems.baseSchems.values().toArray().get(index));
-                schems.currentSchem = schems.baseSchems.keys().toArray().get(index);
-            }
-        });
+            handler.<Player>register("spawn", "[a]", "", (args, player) -> {
+                if (args.length == 0) {
+                    int index = Math.round((float) Math.random());
+                    generator.spawnSchematic(schems.baseSchems.values().toArray().get(index));
+                    schems.currentSchem = schems.baseSchems.keys().toArray().get(index);
+                }
+            });
 
-        handler.<Player>register("reset", "", (args, player)->{
-            generator.resetField();
-        });
+            handler.<Player>register("reset", "", (args, player) -> {
+                generator.resetField();
+            });
 
-        handler.<Player>register("tester", "test", (args, player)->{
-            Boolean ret = schems.checkSchematic(generator.getPlayerZone(player.getTeam().id));
-            if(ret){
-                player.sendMessage("yeah");
-            }else{
-                player.sendMessage("meh");
-            }
-        });
+            handler.<Player>register("tester", "test", (args, player) -> {
+                Boolean ret = schems.checkSchematic(generator.getPlayerZone(player.getTeam().id));
+                if (ret) {
+                    player.sendMessage("yeah");
+                } else {
+                    player.sendMessage("meh");
+                }
+            });
 
-        handler.<Player>register("timer", "", (args, player)->{
-           BuildTimer bt = new BuildTimer(Thread.currentThread());
-           bt.setTime(roundTime);
-           bt.startTimer();
-        });
+            handler.<Player>register("timer", "", (args, player) -> {
+                BuildTimer bt = new BuildTimer(Thread.currentThread());
+                bt.setTime(roundTime);
+                bt.startTimer();
+            });
+        }
     }
 
     public void spawnPlayer(Player player, int id){
         player.setTeam(Team.all()[6+id]);
-        player.dead = false;
         int[] spawn = generator.getSpawns()[id];
+        player.dead = false;
         //location
         Call.onPositionSet(player.con, spawn[0]*8, spawn[1]*8);
         player.setNet(spawn[0]*8, spawn[1]*8);
         player.set(spawn[0]*8, spawn[1]*8);
+
+
     }
 
     public boolean allFinished(){

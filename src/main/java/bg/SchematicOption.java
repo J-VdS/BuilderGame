@@ -7,7 +7,7 @@ import arc.util.Log;
 import arc.util.Structs;
 import mindustry.game.Schematic;
 import mindustry.game.Schematics;
-;
+
 
 import static bg.BuilderGame.*;
 
@@ -21,7 +21,7 @@ public class SchematicOption{
     ObjectMap<String, Schematic> baseSchems = new ObjectMap<>();
 
     //current
-    String currentSchem = null;
+    String currentSchem = ""; //null caused debug error
 
     public SchematicOption(){
         tester = new Schematics();
@@ -88,7 +88,12 @@ public class SchematicOption{
     }
 
     public void random(){
-        currentSchem = Structs.random(baseSchems.keys().toArray().toArray());
+        this.currentSchem = Structs.random(baseSchems.keys().toArray().toArray());
+        System.out.println("tags");
+        for(String s: baseSchems.get(currentSchem).tags.keys())
+            System.out.println(s + " " + baseSchems.get(currentSchem).tags.get(s));
+        System.out.println();
+        System.out.println("Current: " + currentSchem);
     }
 
     public Schematic getCurrentSchem(){

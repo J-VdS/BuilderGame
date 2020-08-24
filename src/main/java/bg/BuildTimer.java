@@ -20,7 +20,6 @@ public class BuildTimer{
         }else{
             return active;
         }
-
     }
 
     public void stopTimer(){
@@ -51,17 +50,18 @@ public class BuildTimer{
         this.updateThread = new Thread(){
             public void run(){
                 Long t;
-                Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", duration/60000L, duration/1000L), 1.1f);
+                Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", duration/60000L, (duration/1000L)-60L*(int)(duration/60000L)), 1.1f);
                 while(true && active){
                     t = (stopTime - System.currentTimeMillis());
                     if(t%interval == 0){
-                        Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", t/60000L, t/1000L), 1.1f);
+                        Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", t/60000L, (t/1000L)-60L*(int)(t/60000L)), 1.1f);
                     }
                     if(t<=0L){
                         break;
                     }
                 }
                 Call.onInfoToast("[scarlet]Time remaining[] 00:00", 5f);
+                active = false;
             }
         };
         this.updateThread.setDaemon(true);

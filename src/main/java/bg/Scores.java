@@ -42,14 +42,18 @@ public class Scores {
         Player p;
         for(int i=0; i<standings.keys().toArray().size; i++){
             p = getLeaderboard().get(i);
-            sb.append(i+1).append(" : ").append(p.name).append("[] : ").append(getPlayerScore(p));
+            sb.append(i+1).append(" : ").append(p.name).append("[] : ").append(getPlayerScore(p)).append('\n');
         }
         Call.onInfoMessage(sb.toString());
     }
 
     public String LeaderboardInfo(){
         StringBuilder sb = new StringBuilder("[sky]Current standings[]\n\n");
-        this.getLeaderboard().forEach(p -> sb.append(p.name).append("[] : ").append(getPlayerScore(p)));
+        this.getLeaderboard().forEach(p -> sb.append(p.name).append("[] : ").append(getPlayerScore(p)).append('\n'));
         return sb.toString();
+    }
+
+    public void reset(){
+        standings.clear();
     }
 }
