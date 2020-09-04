@@ -3,9 +3,9 @@ package bg;
 import mindustry.gen.Call;
 
 public class BuildTimer{
-    private Thread updateThread;
+    private timerThread updateThread;
 
-    private boolean active = false;
+    //private boolean active = false;
     Long interval = 1000L;
     Long duration = 0L;
     //
@@ -16,14 +16,15 @@ public class BuildTimer{
 
     public boolean ticking(){
         if(this.updateThread!=null){
-            return this.updateThread.isAlive() || active;
+            return this.updateThread.isAlive() || this.updateThread.active;
         }else{
-            return active;
+            return false;
         }
     }
 
     public void stopTimer(){
-        this.active = false;
+        this.updateThread.active = false;
+        this.updateThread.kill();
     }
 
     public void setTime(Long time){
@@ -46,25 +47,41 @@ public class BuildTimer{
     }
 
     private void loop(){
-        active = true;
-        this.updateThread = new Thread(){
-            public void run(){
-                Long t;
-                Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", duration/60000L, (duration/1000L)-60L*(int)(duration/60000L)), 1.1f);
-                while(true && active){
-                    t = (stopTime - System.currentTimeMillis());
-                    if(t%interval == 0){
-                        Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", t/60000L, (t/1000L)-60L*(int)(t/60000L)), 1.1f);
-                    }
-                    if(t<=0L){
-                        break;
-                    }
-                }
-                Call.onInfoToast("[scarlet]Time remaining[] 00:00", 5f);
-                active = false;
-            }
-        };
+        this.updateThread = new timerThread();
+        this.updateThread.duration = this.duration;
+        this.updateThread.stopTime = this.stopTime;
         this.updateThread.setDaemon(true);
         this.updateThread.start();
+    }
+
+    class timerThread extends Thread{
+        public boolean active = false;
+        public Long duration;
+        public Long stopTime;
+
+        public void run(){
+            this.active = true;
+            Long t;
+            Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", duration/60000L, (duration/1000L)-60L*(int)(duration/60000L)), 1.1f);
+            try{
+            while(this.active){
+                t = (stopTime - System.currentTimeMillis());
+                if(t%interval == 0){
+                    Call.onInfoToast(String.format("[scarlet]Time remaining[] %02d:%02d", t/60000L, (t/1000L)-60L*(int)(t/60000L)), 1.1f);
+                }
+                if(t<=0L){
+                    break;
+                }
+            }
+            Call.onInfoToast("[scarlet]Time remaining[] 00:00", 5f);
+            this.active = false;
+            }catch (Exception e){
+
+            }
+        }
+        public void kill(){
+            this.active = false;
+            this.duration = 0L;
+        }
     }
 }

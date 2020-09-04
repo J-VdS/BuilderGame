@@ -6,8 +6,8 @@ import mindustry.world.blocks.Floor;
 import mindustry.world.blocks.StaticWall;
 
 public enum Pallete {
-    cavern(Blocks.darksand, Blocks.metalFloor5,  Blocks.duneRocks),
-    desert(Blocks.sand,     Blocks.magmarock,   Blocks.saltRocks),
+    cavern(Blocks.ignarock, Blocks.metalFloor5,  Blocks.duneRocks),
+    //desert(Blocks.sand,     Blocks.magmarock,   Blocks.saltRocks),
     fields(Blocks.grass,    Blocks.metalFloor, Blocks.rocks),
     snowey(Blocks.snow,     Blocks.metalFloor,  Blocks.snowrocks);
 

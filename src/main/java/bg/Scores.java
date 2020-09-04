@@ -37,6 +37,16 @@ public class Scores {
     }
 
     public void showLeaderboardEnd(){
+        Call.onInfoMessage(LeaderboardInfoEnd());
+    }
+
+    public String LeaderboardInfo(){
+        StringBuilder sb = new StringBuilder("[sky]Current standings[]\n\n");
+        this.getLeaderboard().forEach(p -> sb.append(p.name).append("[] : ").append(getPlayerScore(p)).append('\n'));
+        return sb.toString();
+    }
+
+    public String LeaderboardInfoEnd(){
         StringBuilder sb = new StringBuilder("[sky]Final standings[]\n\n");
         Array<Player> _players = getLeaderboard();
         Player p;
@@ -44,12 +54,6 @@ public class Scores {
             p = getLeaderboard().get(i);
             sb.append(i+1).append(" : ").append(p.name).append("[] : ").append(getPlayerScore(p)).append('\n');
         }
-        Call.onInfoMessage(sb.toString());
-    }
-
-    public String LeaderboardInfo(){
-        StringBuilder sb = new StringBuilder("[sky]Current standings[]\n\n");
-        this.getLeaderboard().forEach(p -> sb.append(p.name).append("[] : ").append(getPlayerScore(p)).append('\n'));
         return sb.toString();
     }
 
